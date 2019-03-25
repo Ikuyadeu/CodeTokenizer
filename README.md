@@ -8,7 +8,7 @@ Tokenize Multi Language Code
 
 ```sh
 pip install antlr4-python3-runtime
-git clone https://github.com/Ikuyadeu/Tokenizer.git
+git clone https://github.com/Ikuyadeu/CodeTokenizer.git
 ```
 
 
