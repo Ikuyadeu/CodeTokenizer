@@ -4,7 +4,7 @@ from antlr4 import TerminalNode, InputStream, CommonTokenStream
 from antlr4.error.ErrorListener import ConsoleErrorListener
 
 
-class TokeNizer:
+class TokeNizer():
     IGNORE_CONTENTS = ["NEWLINE", "INDENT", "DEDENT", "ENDMARKER"]
     IGNORE_CONTENTS = ["ENDMARKER"]
 
@@ -198,8 +198,8 @@ def main():
         b=c
         c=0
         """]]
-    CC = TokeNizer("Python")
-    print(CC.getPureTokens(code[2][0]))
+    TN = TokeNizer("Python")
+    print(TN.getPureTokens(code[2][0]))
 
 
 if __name__ == '__main__':
