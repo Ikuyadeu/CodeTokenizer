@@ -1,4 +1,4 @@
-from tokenizer import TokeNizer
+from .tokenizer import TokeNizer
 
 TN = TokeNizer("Python")
 

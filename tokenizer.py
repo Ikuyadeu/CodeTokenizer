@@ -18,25 +18,25 @@ class TokeNizer():
     def __init__(self, language: str):
         self.LANGUAGE = language
         if language == "Python":
-            from grammers.Python.Python3Parser import Python3Parser as Parser
-            from grammers.Python.Python3Lexer import Python3Lexer as Lexer
+            from .grammers.Python.Python3Parser import Python3Parser as Parser
+            from .grammers.Python.Python3Lexer import Python3Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
         elif language == "Java":
-            from grammers.Java.JavaParser import JavaParser as Parser
-            from grammers.Java.JavaLexer import JavaLexer as Lexer
+            from .grammers.Java.JavaParser import JavaParser as Parser
+            from .grammers.Java.JavaLexer import JavaLexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
         elif language == "JavaScript":
-            from grammers.JavaScript.JavaScriptParser import JavaScriptParser as Parser
-            from grammers.JavaScript.JavaScriptLexer import JavaScriptLexer as Lexer
+            from .grammers.JavaScript.JavaScriptParser import JavaScriptParser as Parser
+            from .grammers.JavaScript.JavaScriptLexer import JavaScriptLexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
         elif language == "CPP":
-            from grammers.CPP.CPP14Parser import CPP14Parser as Parser
-            from grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
+            from .grammers.CPP.CPP14Parser import CPP14Parser as Parser
+            from .grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
         else:
             print("Unknown Language, so solve as Python")
-            from grammers.Python.Python3Parser import Python3Parser as Parser
-            from grammers.Python.Python3Lexer import Python3Lexer as Lexer
+            from .grammers.Python.Python3Parser import Python3Parser as Parser
+            from .grammers.Python.Python3Lexer import Python3Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
 
         self.Parser = Parser
