@@ -2,6 +2,7 @@ import sys
 from collections import Counter
 from antlr4 import TerminalNode, InputStream, CommonTokenStream
 from antlr4.error.ErrorListener import ConsoleErrorListener
+from difflib import ndiff
 
 
 class TokeNizer():
@@ -189,6 +190,34 @@ class TokeNizer():
         c_a = Counter(self.tokens_a)
         c_b = Counter(self.tokens_b)
         return list((c_a - c_b).elements()) + list((c_b - c_a).elements())
+
+    def make_change_set(self, source, target):
+        change_set = {}
+        try:
+            change_set = {
+                "a": self.getPureTokens(source),
+                "b": self.getPureTokens(target)
+            }
+        except Exception as identifier:
+            print(identifier)
+            return -1
+
+        # Skip Operation of New file, Remove file, Adjust Space
+        if len(change_set["a"]) == 0 or\
+            len(change_set["b"]) == 0 or\
+                change_set["a"] == change_set["b"]:
+            return -1
+        diffs = list(
+            ndiff(change_set["a"], change_set["b"], charjunk=IS_CHARACTER_JUNK))
+        return clean_diff(diffs)
+
+
+def IS_CHARACTER_JUNK(ch, ws=" \t\n"):
+    return ch in ws
+
+
+def clean_diff(diffs):
+    return [x for x in diffs if not x.startswith("?")]
 
 
 def main():
