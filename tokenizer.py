@@ -35,7 +35,7 @@ class TokeNizer():
             from .grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
         elif self.LANGUAGE == "Ruby":
-            pass
+            return
         else:
             print("Unknown Language, so solve as Python")
             from .grammers.Python.Python3Parser import Python3Parser as Parser
