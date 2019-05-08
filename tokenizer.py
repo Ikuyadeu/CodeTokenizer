@@ -18,22 +18,24 @@ class TokeNizer():
 
     def __init__(self, language: str):
         self.LANGUAGE = language
-        if language == "Python":
+        if self.LANGUAGE == "Python":
             from .grammers.Python.Python3Parser import Python3Parser as Parser
             from .grammers.Python.Python3Lexer import Python3Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
-        elif language == "Java":
+        elif self.LANGUAGE == "Java":
             from .grammers.Java.JavaParser import JavaParser as Parser
             from .grammers.Java.JavaLexer import JavaLexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
-        elif language == "JavaScript":
+        elif self.LANGUAGE == "JavaScript":
             from .grammers.JavaScript.JavaScriptParser import JavaScriptParser as Parser
             from .grammers.JavaScript.JavaScriptLexer import JavaScriptLexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
-        elif language == "CPP":
+        elif self.LANGUAGE == "CPP":
             from .grammers.CPP.CPP14Parser import CPP14Parser as Parser
             from .grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
+        elif self.LANGUAGE == "Ruby":
+            pass
         else:
             print("Unknown Language, so solve as Python")
             from .grammers.Python.Python3Parser import Python3Parser as Parser
@@ -44,6 +46,21 @@ class TokeNizer():
         self.Lexer = Lexer
 
     def getTokens(self, code):
+        if self.LANGUAGE == "Ruby":
+            import subprocess, json
+            exclude_tokens = ["\n", " "]
+
+            try:
+                out = subprocess.Popen(['ruby', 'tokenizer.rb'], 
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT)
+                stdout, _ = out.communicate(input=code.encode())
+            except:
+                return []
+            s = json.loads(stdout.decode('utf-8'))
+            strings = [x["string"] for x in s if x["string"] not in exclude_tokens]
+            return strings
         return self.makeTokens(self.getTree(code), [])
 
     def getPureTokens(self, code):
