@@ -64,6 +64,8 @@ class TokeNizer():
         return self.makeTokens(self.getTree(code), [])
 
     def getPureTokens(self, code):
+        if self.LANGUAGE == "Ruby":
+            return [x for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
         return [x[0] for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
 
     def set_code(self, code_a: str, code_b: str):
