@@ -12,7 +12,7 @@ git clone https://github.com/Ikuyadeu/CodeTokenizer.git
 ```
 
 
-2. Make python code that call this
+2. Make python code that call tokenizer
 
 ```py
 from tokenizer import TokeNizer
@@ -29,6 +29,7 @@ print(TN.getPureTokens(code))
 * Java
 * JavaScript
 * C++
+* Ruby
 
 
 ## Thanks
