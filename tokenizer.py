@@ -2,7 +2,7 @@ import sys
 from collections import Counter
 from antlr4 import TerminalNode, InputStream, CommonTokenStream
 from antlr4.error.ErrorListener import ConsoleErrorListener
-from difflib import ndiff
+from difflib import ndiff, SequenceMatcher
 
 
 class TokeNizer():
@@ -229,6 +229,53 @@ class TokeNizer():
         diffs = list(
             ndiff(change_set["a"], change_set["b"], charjunk=IS_CHARACTER_JUNK))
         return clean_diff(diffs)
+
+
+    def make_change_set2(self, source, target):
+        def opt_tag2symbol(opt_tag):
+            if opt_tag == "replace":
+                return "*"
+            elif opt_tag == "delete":
+                return "-"
+            elif opt_tag == "insert":
+                return "+"
+            elif opt_tag == "equal":
+                return "="
+            else:
+                return "?"
+
+        change_set = {}
+        try:
+            change_set = {
+                "a": self.getPureTokens(source),
+                "b": self.getPureTokens(target)
+            }
+        except Exception as identifier:
+            print(identifier)
+            return -1
+
+        if len(change_set["a"]) == 0 or\
+            len(change_set["b"]) == 0 or\
+                change_set["a"] == change_set["b"]:
+            return -1
+
+        opcodes = SequenceMatcher(None, change_set["a"], change_set["b"]).get_opcodes()
+        diffs = []
+
+        for tag, a_i1, a_i2, b_i1, b_i2 in opcodes:
+            symbol = opt_tag2symbol(tag)
+            if symbol == "*":
+                out = change_set["a"][a_i1:a_i2] + ["-->"] + change_set["b"][b_i1:b_i2]
+            elif symbol == "-":
+                out = change_set["a"][a_i1:a_i2]
+            elif symbol == "+":
+                out = change_set["b"][b_i1:b_i2]
+            elif symbol == "=":
+                out = change_set["b"][b_i1:b_i2]
+            else:
+                out = [""]
+            diffs.append(" ".join([symbol] + out))
+        return diffs
 
 
 def IS_CHARACTER_JUNK(ch, ws=" \t\n"):
