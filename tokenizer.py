@@ -265,18 +265,41 @@ class TokeNizer():
         for tag, a_i1, a_i2, b_i1, b_i2 in opcodes:
             symbol = opt_tag2symbol(tag)
             if symbol == "*":
-                out = change_set["a"][a_i1:a_i2] + ["-->"] + change_set["b"][b_i1:b_i2]
+                change_a = devide_token_sequence(change_set["a"][a_i1:a_i2])
+                change_b = devide_token_sequence(change_set["b"][b_i1:b_i2])
+                if len(change_a) <= 1 and len(change_a) <= 1:
+                    sequence = [" ".join([symbol] + change_a[0] + ["-->"] + change_b[0])]
+                else:
+                    a_out =  [" ".join(["-"] + x) for x in change_a]
+                    b_out =  [" ".join(["+"] + x) for x in change_b]
+                    sequence = a_out + b_out
             elif symbol == "-":
                 out = change_set["a"][a_i1:a_i2]
+                sequence = [" ".join([symbol] + x) for x in devide_token_sequence(out)]
             elif symbol == "+":
                 out = change_set["b"][b_i1:b_i2]
+                sequence = [" ".join([symbol] + x) for x in devide_token_sequence(out)]
             elif symbol == "=":
-                out = change_set["b"][b_i1:b_i2]
+                out = devide_token_sequence(change_set["b"][b_i1:b_i2])
+                sequence = [" ".join([symbol] + x) for x in out]
+                diffs.extend(sequence)
             else:
-                out = [""]
-            diffs.append(" ".join([symbol] + out))
+                continue
+            diffs.extend(sequence)            
         return diffs
 
+def devide_token_sequence(sequence):
+    if " " not in sequence:
+        return [sequence]
+    new_sequence = []
+    indexes = [i for i, x in enumerate(sequence) if x in [" ", "\n", "\t"]]
+    previous_index = 0
+    for index in indexes:
+        new_sequence.append(sequence[previous_index+1:index])
+        previous_index = index
+    if previous_index + 1 != len(sequence):
+        new_sequence.append(sequence[previous_index+1:])    
+    return new_sequence
 
 def IS_CHARACTER_JUNK(ch, ws=" \t\n"):
     return ch in ws
