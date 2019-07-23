@@ -2,7 +2,7 @@ import sys
 from collections import Counter
 from antlr4 import TerminalNode, InputStream, CommonTokenStream
 from antlr4.error.ErrorListener import ConsoleErrorListener
-from difflib import ndiff, SequenceMatcher
+from difflib import ndiff, SequenceMatcher, Differ, ndiff
 
 
 class TokeNizer():
@@ -19,8 +19,8 @@ class TokeNizer():
     def __init__(self, language: str):
         self.LANGUAGE = language
         if self.LANGUAGE == "Python":
-            from .grammers.Python.Python3Parser import Python3Parser as Parser
-            from .grammers.Python.Python3Lexer import Python3Lexer as Lexer
+            from grammers.Python.Python3Parser import Python3Parser as Parser
+            from grammers.Python.Python3Lexer import Python3Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
         elif self.LANGUAGE == "Java":
             from .grammers.Java.JavaParser import JavaParser as Parser
@@ -64,10 +64,12 @@ class TokeNizer():
         return self.makeTokens(self.getTree(code), [])
 
     def getPureTokens(self, code):
-        if self.LANGUAGE == "Ruby":
-            return [x for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
-        return [x[0] for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
-
+        try:
+            if self.LANGUAGE == "Ruby":
+                return [x for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
+            return [x[0] for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
+        except:
+            return []
     def set_code(self, code_a: str, code_b: str):
         self.code_a = code_a
         self.code_b = code_b
@@ -212,14 +214,10 @@ class TokeNizer():
 
     def make_change_set(self, source, target):
         change_set = {}
-        try:
-            change_set = {
-                "a": self.getPureTokens(source),
-                "b": self.getPureTokens(target)
-            }
-        except Exception as identifier:
-            print(identifier)
-            return -1
+        change_set = {
+            "a": self.getPureTokens(source),
+            "b": self.getPureTokens(target)
+        }
 
         # Skip Operation of New file, Remove file, Adjust Space
         if len(change_set["a"]) == 0 or\
@@ -230,29 +228,13 @@ class TokeNizer():
             ndiff(change_set["a"], change_set["b"], charjunk=IS_CHARACTER_JUNK))
         return clean_diff(diffs)
 
-
     def make_change_set2(self, source, target):
-        def opt_tag2symbol(opt_tag):
-            if opt_tag == "replace":
-                return "*"
-            elif opt_tag == "delete":
-                return "-"
-            elif opt_tag == "insert":
-                return "+"
-            elif opt_tag == "equal":
-                return "="
-            else:
-                return "?"
 
         change_set = {}
-        try:
-            change_set = {
-                "a": self.getPureTokens(source),
-                "b": self.getPureTokens(target)
-            }
-        except Exception as identifier:
-            print(identifier)
-            return -1
+        change_set = {
+            "a": self.getPureTokens(source),
+            "b": self.getPureTokens(target)
+        }
 
         if len(change_set["a"]) == 0 or\
             len(change_set["b"]) == 0 or\
@@ -288,6 +270,61 @@ class TokeNizer():
             diffs.extend(sequence)            
         return diffs
 
+    def make_change_set_line(self, source, target):
+        differ = Differ().compare(source, target)
+        differ = ndiff(source.splitlines(keepends=True),
+                       target.splitlines(keepends=True))
+        previous_symbol = " "
+        previous_tokens = []
+        out = []
+        for diff in differ:
+            symbol = diff[0]
+            if len(diff) < 3 or symbol == "?":
+                continue
+            token = self.getPureTokens(diff[2:])
+            if symbol == " ":
+                if previous_symbol == "-":
+                    out.append([("-", previous_tokens)])  
+                out.append([("=", token)])
+            elif symbol == "-":
+                if previous_symbol == "-":
+                    out.append([("-", previous_tokens)])
+            elif symbol == "+":
+                if previous_symbol == "-":
+                    changed_tokens = []
+                    matcher = SequenceMatcher(None,
+                    previous_tokens, token)
+                    for tag, a_i1, a_i2, b_i1, b_i2 in matcher.get_opcodes():
+                        symbol2 = opt_tag2symbol(tag)
+                        if symbol2 == "*":
+                            changed_tokens.append((symbol2, previous_tokens[b_i1:b_i2], token[a_i1:a_i2]))
+                        elif symbol2 == "-":
+                            changed_tokens.append((symbol2, previous_tokens[a_i1:a_i2]))
+                        elif symbol2 == "+":
+                            changed_tokens.append((symbol2, token[b_i1:b_i2]))
+                        elif symbol2 == "=":
+                            changed_tokens.append((symbol2, previous_tokens[b_i1:b_i2]))
+                        else:
+                            continue
+                    out.append(changed_tokens)
+                else:
+                    out.append([("+", self.getPureTokens(diff[2:]))])
+            previous_symbol = symbol
+            previous_tokens = token
+        return out
+
+def opt_tag2symbol(opt_tag):
+    if opt_tag == "replace":
+        return "*"
+    elif opt_tag == "delete":
+        return "-"
+    elif opt_tag == "insert":
+        return "+"
+    elif opt_tag == "equal":
+        return "="
+    else:
+        return "?"
+
 def devide_token_sequence(sequence):
     if " " not in sequence:
         return [sequence]
@@ -311,13 +348,27 @@ def clean_diff(diffs):
 
 def main():
     code = [["a=0", "if a.isEmpty():"], ["print(\"hello\")"], [
-        """
-        a= b
-        b=c
-        c=0
-        """]]
+"""a=b
+
+b=cef
+c=0
+""",
+"""a=b
+b=d
+aaaa
+c=0
+"""]]
     TN = TokeNizer("Python")
-    print(TN.getPureTokens(code[2][0]))
+    # print(TN.make_change_set2(code[2][0], code[2][1]))
+    print(TN.make_change_set_line(code[2][0], code[2][1]))
+    expect_out = [
+        [("=", ["a", "=", "b"])],
+        [("-", [])],
+        [("=", ["b", "="]), ("*", ["cef"], ["d"])],
+        [("+", ["aaaa"])],
+        [("=", ["c", "=", "0"])]
+    ]
+    print(expect_out)
 
 
 if __name__ == '__main__':
