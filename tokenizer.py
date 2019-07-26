@@ -39,6 +39,7 @@ class TokeNizer():
             self.VOCABULARY = Parser.symbolicNames
             self.IDENTIFIER_TAG = "Identifier"
         elif self.LANGUAGE == "Ruby":
+            self.IDENTIFIER_TAG = "ident"
             return
         else:
             print("Unknown Language, so solve as Python")
@@ -63,7 +64,7 @@ class TokeNizer():
             except:
                 return []
             s = json.loads(stdout.decode('utf-8'))
-            strings = [x["string"] for x in s if x["string"] not in exclude_tokens]
+            strings = [(x["string"],x["type"]) for x in s if x["string"] != " "]
             return strings
         return self.makeTokens(self.getTree(code), [])
 
@@ -357,7 +358,6 @@ class TokeNizer():
                     tokens_b[j] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
                     abstracted_identifiers[token_a[0]] = abstract_index
                     abstract_index += 1
-        print(tokens_a)
         return {"condition": [x[0] for x in tokens_a],
                 "consequent": [x[0] for x in tokens_b]}
 
@@ -409,22 +409,36 @@ def main():
 """for i, element in enumerate(my_array):"""],
 ["""for (i in range(len(my_array))){
     element = my_array[i]}""",
-"""for (i, element in enumerate(my_array)){}"""]]
-    TN = TokeNizer("JavaScript")
+"""for (i, element in enumerate(my_array)){}"""],
+[
+""" 
+def some_method(arg1=:default, arg2=nil, arg3=[])
+  # do something...
+end
+""",
+"""
+def some_method(arg1 = :default, arg2 = nil, arg3 = [])
+  # do something...
+end
+"""
+]
+
+]
+    TN = TokeNizer("Ruby")
     expect_out = [
     {
-        "condition": ["for ${1:element} in range(len(${2:array})):",
+        "condition": ["for ${1:i} in range(len(${2:my_array})):",
                        "\t${3:element} = ${2:array}[${1:element}]"],
-        "consequent": ["for ${1:element}, ${3:element} in enumerate(${2:array}):"]
+        "consequent": ["for ${1:i}, ${3:element} in enumerate(${2:my_array}):"]
     }
     ]
 
-    result = TN.get_abstract_tree_diff(code[1][0], code[1][1])
+    result = TN.get_abstract_tree_diff(code[2][0], code[2][1])
     condition = result["condition"]
     consequent = result["consequent"]
-    # print(f"inputA:\n{code[0]}")
+    print(f"inputA:\n{code[0]}")
     print(" ".join(condition))
-    # print(f"inputB:\n{code[1]}")
+    print(f"inputB:\n{code[1]}")
     print((" ".join(consequent)))
 
 
