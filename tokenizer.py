@@ -53,7 +53,6 @@ class TokeNizer():
     def getTokens(self, code):
         if self.LANGUAGE == "Ruby":
             import subprocess, json
-            exclude_tokens = ["\n", " "]
 
             try:
                 out = subprocess.Popen(['ruby', 'tokenizer.rb'], 
@@ -352,7 +351,7 @@ class TokeNizer():
                 if token_b[0] in abstracted_identifiers:
                     tokens_b[j] = (f"${abstracted_identifiers[token_b[0]]}", "ABSTRACT_SNIPPET")
                     continue
-                elif token_a[0] == token_b[0]:
+                elif token_a[0] == token_b[0] and i + 1 < len(tokens_a) and tokens_a[i+1][0] != "(":
                     # print(token_a)
                     tokens_a[i] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
                     tokens_b[j] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
