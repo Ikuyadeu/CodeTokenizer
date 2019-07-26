@@ -6,8 +6,8 @@ from difflib import ndiff, SequenceMatcher, Differ, ndiff
 
 
 class TokeNizer():
-    IGNORE_CONTENTS = ["NEWLINE", "INDENT", "DEDENT", "ENDMARKER"]
-    IGNORE_CONTENTS = ["ENDMARKER"]
+    IGNORE_CONTENTS = ["ENDMARKER","DEDENT"]
+    IDENTIFIER_TAG = ""
 
     CONTENT = 0
     SYMBOL = 1
@@ -19,21 +19,25 @@ class TokeNizer():
     def __init__(self, language: str):
         self.LANGUAGE = language
         if self.LANGUAGE == "Python":
-            from grammers.Python.Python3Parser import Python3Parser as Parser
-            from grammers.Python.Python3Lexer import Python3Lexer as Lexer
+            from .grammers.Python.Python3Parser import Python3Parser as Parser
+            from .grammers.Python.Python3Lexer import Python3Lexer as Lexer
+            self.IDENTIFIER_TAG = "NAME"
             self.VOCABULARY = Parser.symbolicNames
         elif self.LANGUAGE == "Java":
             from .grammers.Java.JavaParser import JavaParser as Parser
             from .grammers.Java.JavaLexer import JavaLexer as Lexer
+            self.IDENTIFIER_TAG = "IDENTIFIER"
             self.VOCABULARY = Parser.symbolicNames
         elif self.LANGUAGE == "JavaScript":
             from .grammers.JavaScript.JavaScriptParser import JavaScriptParser as Parser
             from .grammers.JavaScript.JavaScriptLexer import JavaScriptLexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
+            self.IDENTIFIER_TAG = "Identifier"
         elif self.LANGUAGE == "CPP":
             from .grammers.CPP.CPP14Parser import CPP14Parser as Parser
             from .grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
+            self.IDENTIFIER_TAG = "Identifier"
         elif self.LANGUAGE == "Ruby":
             return
         else:
@@ -70,6 +74,7 @@ class TokeNizer():
             return [x[0] for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
         except:
             return []
+
     def set_code(self, code_a: str, code_b: str):
         self.code_a = code_a
         self.code_b = code_b
@@ -281,37 +286,80 @@ class TokeNizer():
             symbol = diff[0]
             if len(diff) < 3 or symbol == "?":
                 continue
-            token = self.getPureTokens(diff[2:])
             if symbol == " ":
-                if previous_symbol == "-":
-                    out.append([("-", previous_tokens)])  
-                out.append([("=", token)])
+                continue
             elif symbol == "-":
+                token = self.getPureTokens(diff[2:])
+                if token == []:
+                    continue
                 if previous_symbol == "-":
                     out.append([("-", previous_tokens)])
+                elif previous_symbol == "+":
+                    changed_tokens = self.get_lines_diff(previous_tokens, token)
+                    token = []
+                    if changed_tokens != []:
+                        out.append(changed_tokens)
             elif symbol == "+":
+                token = self.getPureTokens(diff[2:])
+                if token == []:
+                    continue
+                if previous_symbol == "+":
+                    out.append([("+", previous_tokens)])
                 if previous_symbol == "-":
-                    changed_tokens = []
-                    matcher = SequenceMatcher(None,
-                    previous_tokens, token)
-                    for tag, a_i1, a_i2, b_i1, b_i2 in matcher.get_opcodes():
-                        symbol2 = opt_tag2symbol(tag)
-                        if symbol2 == "*":
-                            changed_tokens.append((symbol2, previous_tokens[b_i1:b_i2], token[a_i1:a_i2]))
-                        elif symbol2 == "-":
-                            changed_tokens.append((symbol2, previous_tokens[a_i1:a_i2]))
-                        elif symbol2 == "+":
-                            changed_tokens.append((symbol2, token[b_i1:b_i2]))
-                        elif symbol2 == "=":
-                            changed_tokens.append((symbol2, previous_tokens[b_i1:b_i2]))
-                        else:
-                            continue
-                    out.append(changed_tokens)
-                else:
-                    out.append([("+", self.getPureTokens(diff[2:]))])
+                    changed_tokens = self.get_lines_diff(previous_tokens, token)
+                    token = []
+                    if changed_tokens != []:
+                        out.append(changed_tokens)
             previous_symbol = symbol
             previous_tokens = token
+        if previous_symbol in ["+", "-"]:
+            out.append([{"tag": previous_symbol, "tokens": previous_tokens}])
         return out
+    
+    def get_lines_diff(self, previous_tokens, token):
+        changed_tokens = []
+        matcher = SequenceMatcher(None,
+        previous_tokens, token)
+        for tag, a_i1, a_i2, b_i1, b_i2 in matcher.get_opcodes():
+            symbol2 = opt_tag2symbol(tag)
+            if symbol2 == "*":
+                changed_tokens.append({"tag": symbol2, "tokens": [previous_tokens[b_i1:b_i2], token[a_i1:a_i2]]})
+            elif symbol2 == "-":
+                changed_tokens.append({"tag": symbol2, "tokens": previous_tokens[a_i1:a_i2]})
+            elif symbol2 == "+":
+                changed_tokens.append({"tag": symbol2, "tokens": token[b_i1:b_i2]})
+            elif symbol2 == "=":
+                changed_tokens.append({"tag": symbol2, "tokens":  token[b_i1:b_i2]})
+            else:
+                continue
+        return changed_tokens
+
+    def get_abstract_tree_diff(self, source, target):
+        tokens_a = clean_symbol(self.getTokens(source))
+        tokens_b = clean_symbol(self.getTokens(target))
+
+        abstract_index = 0
+        abstracted_identifiers = {}
+        for i, token_a in [x for x in enumerate(tokens_a)
+                        if x[1][1] == self.IDENTIFIER_TAG]:
+            if token_a[0] in abstracted_identifiers:
+                tokens_a[i] = (f"${abstracted_identifiers[token_a[0]]}", "ABSTRACT_SNIPPET")
+                continue
+
+            for j, token_b in [x for x in enumerate(tokens_b)
+                            if x[1][1] == self.IDENTIFIER_TAG]:
+                if token_b[0] in abstracted_identifiers:
+                    tokens_b[j] = (f"${abstracted_identifiers[token_b[0]]}", "ABSTRACT_SNIPPET")
+                    continue
+                elif token_a[0] == token_b[0]:
+                    # print(token_a)
+                    tokens_a[i] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
+                    tokens_b[j] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
+                    abstracted_identifiers[token_a[0]] = abstract_index
+                    abstract_index += 1
+        print(tokens_a)
+        return {"condition": [x[0] for x in tokens_a],
+                "consequent": [x[0] for x in tokens_b]}
 
 def opt_tag2symbol(opt_tag):
     if opt_tag == "replace":
@@ -341,34 +389,44 @@ def devide_token_sequence(sequence):
 def IS_CHARACTER_JUNK(ch, ws=" \t\n"):
     return ch in ws
 
-
 def clean_diff(diffs):
     return [x for x in diffs if not x.startswith("?")]
 
+def clean_symbol(tokens):
+    for i, token in enumerate(tokens):
+        if token[1] == "NEWLINE":
+            tokens[i] = ("\n", "NEWLINE")
+        elif token[1] == "INDENT":
+            # print(tokens[i])
+            tokens[i] = ("\t", "INDENT")
+    return tokens
+
 
 def main():
-    code = [["a=0", "if a.isEmpty():"], ["print(\"hello\")"], [
-"""a=b
-
-b=cef
-c=0
-""",
-"""a=b
-b=d
-aaaa
-c=0
-"""]]
-    TN = TokeNizer("Python")
-    # print(TN.make_change_set2(code[2][0], code[2][1]))
-    print(TN.make_change_set_line(code[2][0], code[2][1]))
+    code = [[
+"""for i in range(len(my_array)):
+    element = my_array[i]""",
+"""for i, element in enumerate(my_array):"""],
+["""for (i in range(len(my_array))){
+    element = my_array[i]}""",
+"""for (i, element in enumerate(my_array)){}"""]]
+    TN = TokeNizer("JavaScript")
     expect_out = [
-        [("=", ["a", "=", "b"])],
-        [("-", [])],
-        [("=", ["b", "="]), ("*", ["cef"], ["d"])],
-        [("+", ["aaaa"])],
-        [("=", ["c", "=", "0"])]
+    {
+        "condition": ["for ${1:element} in range(len(${2:array})):",
+                       "\t${3:element} = ${2:array}[${1:element}]"],
+        "consequent": ["for ${1:element}, ${3:element} in enumerate(${2:array}):"]
+    }
     ]
-    print(expect_out)
+
+    result = TN.get_abstract_tree_diff(code[1][0], code[1][1])
+    condition = result["condition"]
+    consequent = result["consequent"]
+    # print(f"inputA:\n{code[0]}")
+    print(" ".join(condition))
+    # print(f"inputB:\n{code[1]}")
+    print((" ".join(consequent)))
+
 
 
 if __name__ == '__main__':
