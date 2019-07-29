@@ -357,10 +357,10 @@ class TokeNizer():
                     tokens_b[j] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
                     abstracted_identifiers[token_a[0]] = abstract_index
                     abstract_index += 1
-        non_abstracted_identifiers = {"condition": [x[0] for i, x in enumerate(tokens_a)
-                                                    if x[1] == self.IDENTIFIER_TAG and i + 1 < len(tokens_a) and tokens_a[i+1][0] != "("],
-                                      "consequent": [x[0] for i, x in enumerate(tokens_b)
-                                                     if x[1] == self.IDENTIFIER_TAG and i + 1 < len(tokens_b) and tokens_b[i+1][0] != "("]}        
+        non_abstracted_identifiers = {"condition": list(set([x[0] for i, x in enumerate(tokens_a)
+                                                    if x[1] == self.IDENTIFIER_TAG and i + 1 < len(tokens_a) and tokens_a[i+1][0] != "("])),
+                                      "consequent": list(set([x[0] for i, x in enumerate(tokens_b)
+                                                     if x[1] == self.IDENTIFIER_TAG and i + 1 < len(tokens_b) and tokens_b[i+1][0] != "("]))}        
         return {"condition": [x[0] for x in tokens_a],
                 "consequent": [x[0] for x in tokens_b],
                 "identifiers": non_abstracted_identifiers}
