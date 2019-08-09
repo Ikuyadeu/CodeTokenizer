@@ -63,9 +63,21 @@ class TokeNizer():
             except:
                 return []
             s = json.loads(stdout.decode('utf-8'))
-            strings = [(x["string"],x["type"]) for x in s if x["string"] != " "]
+            strings = self.makeRubySpace(s)
             return strings
         return self.makeTokens(self.getTree(code), [])
+
+    def makeRubySpace(self, strings):
+        tokens = []
+        for i, s in enumerate([x for x in strings if x["string"] not in [" ", "\n"]]):
+            if i > 0:
+                before_index = tokens[-1][3] + len(tokens[-1][0])
+            else:
+                before_index = 0
+            start = s["position"]["column"]
+            space = start - before_index            
+            tokens.append((s["string"], s["type"], space, start))
+        return tokens
 
     def getPureTokens(self, code):
         try:
@@ -122,8 +134,15 @@ class TokeNizer():
         if isinstance(tree, TerminalNode):
             symbollic_name = self.VOCABULARY[tree.symbol.type]
             if symbollic_name not in self.IGNORE_CONTENTS:
-                token = (tree.getText(), symbollic_name)
-                tokens.append(token)
+                if len(tokens) > 0:
+                    before_index = tokens[-1][3] + len(tokens[-1][0])
+                else:
+                    before_index = 0
+                start = tree.getPayload().start
+                space = start - before_index
+                string = tree.getText()
+                if not string.startswith("<missing"):
+                    tokens.append((string, symbollic_name, space, start))
         for i in range(tree.getChildCount()):
             tree2 = tree.getChild(i)
             self.makeTokens(tree2, tokens)
@@ -201,7 +220,6 @@ class TokeNizer():
                 dist[row][col] = min(values)
                 if dist[row][col] == substitution:
                     if s[row-1] != t[col-1]:
-                        # print([s[row-1], t[col-1]])
                         dist2[row][col] = dist2[row-1][col-1] + [t[col-1]]
                     else:
                         dist2[row][col] = dist2[row-1][col-1]
@@ -343,26 +361,30 @@ class TokeNizer():
         for i, token_a in [x for x in enumerate(tokens_a)
                         if x[1][1] == self.IDENTIFIER_TAG]:
             if token_a[0] in abstracted_identifiers:
-                tokens_a[i] = (f"${abstracted_identifiers[token_a[0]]}", "ABSTRACT_SNIPPET")
+                tokens_a[i] = (f"${abstracted_identifiers[token_a[0]]}", "ABSTRACT_SNIPPET", token_a[2], token_a[3])
                 continue
 
             for j, token_b in [x for x in enumerate(tokens_b)
                             if x[1][1] == self.IDENTIFIER_TAG]:
                 if token_b[0] in abstracted_identifiers:
-                    tokens_b[j] = (f"${abstracted_identifiers[token_b[0]]}", "ABSTRACT_SNIPPET")
+                    tokens_b[j] = (f"${abstracted_identifiers[token_b[0]]}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     continue
                 elif token_a[0] == token_b[0] and i + 1 < len(tokens_a) and tokens_a[i+1][0] != "(":
-                    tokens_a[i] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
-                    tokens_b[j] = (f"${abstract_index}", "ABSTRACT_SNIPPET")
+                    tokens_a[i] = (f"${abstract_index}", "ABSTRACT_SNIPPET", token_a[2], token_a[3])
+                    tokens_b[j] = (f"${abstract_index}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     abstracted_identifiers[token_a[0]] = abstract_index
                     abstract_index += 1
         non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
                                                     if x[1] == self.IDENTIFIER_TAG])),
                                       "consequent": list(set([x[0] for x in tokens_b
                                                      if x[1] == self.IDENTIFIER_TAG]))}        
-        return {"condition": [x[0] for x in tokens_a],
-                "consequent": [x[0] for x in tokens_b],
+        return {"condition": [x for x in tokens_a],
+                "consequent": [x for x in tokens_b],
                 "identifiers": non_abstracted_identifiers}
+
+def tokens2Realcode(tokens):
+    return "".join([" " * x[2] + x[0] for x in tokens])
+    
 
 def opt_tag2symbol(opt_tag):
     if opt_tag == "replace":
@@ -398,21 +420,26 @@ def clean_diff(diffs):
 def clean_symbol(tokens):
     for i, token in enumerate(tokens):
         if token[1] == "NEWLINE":
-            tokens[i] = ("\n", "NEWLINE")
+            tokens[i] = ("\n", "NEWLINE", token[2], token[3])
         elif token[1] == "INDENT":
-            # print(tokens[i])
-            tokens[i] = ("\t", "INDENT")
+            tokens[i] = ("\t", "INDENT", token[2], token[3])
     return tokens
 
 
 def main():
     code = [[
 """for i in range(len(my_array)):
-    element = my_array[i]""",
+    element = my_array[i]
+    for a in b:
+        pass""",
 """for i, element in enumerate(my_array):"""],
-["""for (i in range(len(my_array))){
+["""
+
+for (i in range(len(my_array))){
     element = my_array[i]}""",
-"""for (i, element in enumerate(my_array)){}"""],
+"""
+
+for (i, element in enumerate(my_array)){}"""],
 [
 """ 
 def some_method(arg1=:default, arg2=nil, arg3=[])
@@ -424,10 +451,19 @@ def some_method(arg1 = :default, arg2 = nil, arg3 = [])
   a = b
 end
 """
+],
+[
+"""
+tf.scalar_summary('regularization_loss', regularization_loss,
+name='regularization_loss')
+""",
+"""
+tf.summary.scalar('regularization_loss', regularization_loss)
+"""
 ]
 
 ]
-    TN = TokeNizer("Ruby")
+    TN = TokeNizer("Python")
     expect_out = [
     {
         "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -436,14 +472,17 @@ end
     }
     ]
 
-    result = TN.get_abstract_tree_diff(code[2][0], code[2][1])
+    target = code[3]
+    result = TN.get_abstract_tree_diff(target[0], target[1])
     condition = result["condition"]
     consequent = result["consequent"]
-    print(f"inputA:\n{code[0]}")
-    print(" ".join(condition))
-    print(f"inputB:\n{code[1]}")
-    print((" ".join(consequent)))
-    print(result["identifiers"])
+    print(f"inputA:\n{target[0]}")
+    print(condition)
+    print(tokens2Realcode(condition))
+    print(f"inputB:\n{target[1]}")
+    print(consequent)
+    print(tokens2Realcode(consequent))
+    # print(result["identifiers"])
 
 
 
