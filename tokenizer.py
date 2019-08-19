@@ -22,24 +22,34 @@ class TokeNizer():
             from .grammers.Python.Python3Parser import Python3Parser as Parser
             from .grammers.Python.Python3Lexer import Python3Lexer as Lexer
             self.IDENTIFIER_TAG = "NAME"
+            self.STRING_TAG = "STRING"  
+            self.NUMBER_TAG = "NUMBER"
             self.VOCABULARY = Parser.symbolicNames
         elif self.LANGUAGE == "Java":
             from .grammers.Java.JavaParser import JavaParser as Parser
             from .grammers.Java.JavaLexer import JavaLexer as Lexer
             self.IDENTIFIER_TAG = "IDENTIFIER"
+            self.STRING_TAG = "STRING_LITERAL"
+            self.NUMBER_TAG = "DECIMAL_LITERAL"
             self.VOCABULARY = Parser.symbolicNames
         elif self.LANGUAGE == "JavaScript":
             from .grammers.JavaScript.JavaScriptParser import JavaScriptParser as Parser
             from .grammers.JavaScript.JavaScriptLexer import JavaScriptLexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
             self.IDENTIFIER_TAG = "Identifier"
+            self.STRING_TAG = "StringLiteral"
+            self.NUMBER_TAG = "DecimalLiteral"
         elif self.LANGUAGE == "CPP":
             from .grammers.CPP.CPP14Parser import CPP14Parser as Parser
             from .grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
             self.IDENTIFIER_TAG = "Identifier"
+            self.STRING_TAG = "Stringliteral"
+            self.NUMBER_TAG = "Integerliteral"
         elif self.LANGUAGE == "Ruby":
             self.IDENTIFIER_TAG = "ident"
+            self.STRING_TAG = "tstring_content"
+            self.NUMBER_TAG = "int"
             return
         else:
             print("Unknown Language, so solve as Python")
@@ -359,19 +369,19 @@ class TokeNizer():
         abstract_index = 0
         abstracted_identifiers = {}
         for i, token_a in [x for x in enumerate(tokens_a)
-                        if x[1][1] == self.IDENTIFIER_TAG]:
+                        if x[1][1] in [self.IDENTIFIER_TAG, self.STRING_TAG, self.NUMBER_TAG]]:
             if token_a[0] in abstracted_identifiers:
-                tokens_a[i] = (f"${abstracted_identifiers[token_a[0]]}", "ABSTRACT_SNIPPET", token_a[2], token_a[3])
+                tokens_a[i] = (f"${{{abstracted_identifiers[token_a[0]]}:{token_a[1]}}}", "ABSTRACT_SNIPPET", token_a[2], token_a[3])
                 continue
 
             for j, token_b in [x for x in enumerate(tokens_b)
-                            if x[1][1] == self.IDENTIFIER_TAG]:
+                            if x[1][1] in [self.IDENTIFIER_TAG, self.STRING_TAG, self.NUMBER_TAG]]:
                 if token_b[0] in abstracted_identifiers:
-                    tokens_b[j] = (f"${abstracted_identifiers[token_b[0]]}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
+                    tokens_b[j] = (f"${{{abstracted_identifiers[token_b[0]]}:{token_b[1]}}}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     continue
                 elif token_a[0] == token_b[0] and i + 1 < len(tokens_a) and tokens_a[i+1][0] != "(":
-                    tokens_a[i] = (f"${abstract_index}", "ABSTRACT_SNIPPET", token_a[2], token_a[3])
-                    tokens_b[j] = (f"${abstract_index}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
+                    tokens_a[i] = (f"${{{abstract_index}:{token_a[1]}}}", "ABSTRACT_SNIPPET", token_a[2], token_a[3])
+                    tokens_b[j] = (f"${{{abstract_index}:{token_b[1]}}}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     abstracted_identifiers[token_a[0]] = abstract_index
                     abstract_index += 1
         non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
@@ -460,10 +470,18 @@ name='regularization_loss')
 """
 tf.summary.scalar('regularization_loss', regularization_loss)
 """
+],
+[
+"""
+print(2, "hello")
+""",
+"""
+print("hello", 2)
+"""
 ]
 
 ]
-    TN = TokeNizer("Python")
+    TN = TokeNizer("Ruby")
     expect_out = [
     {
         "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -472,7 +490,7 @@ tf.summary.scalar('regularization_loss', regularization_loss)
     }
     ]
 
-    target = code[3]
+    target = code[4]
     result = TN.get_abstract_tree_diff(target[0], target[1])
     condition = result["condition"]
     consequent = result["consequent"]
