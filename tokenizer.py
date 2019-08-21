@@ -387,14 +387,28 @@ class TokeNizer():
         non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
                                                     if x[1] == self.IDENTIFIER_TAG])),
                                       "consequent": list(set([x[0] for x in tokens_b
-                                                     if x[1] == self.IDENTIFIER_TAG]))}        
-        return {"condition": [x for x in tokens_a],
-                "consequent": [x for x in tokens_b],
-                "identifiers": non_abstracted_identifiers}
+                                                     if x[1] == self.IDENTIFIER_TAG]))}
+        real_condition = tokens2Realcode(tokens_a)
+        real_consequent = tokens2Realcode(tokens_b)
+        if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
+            return {"condition": non_abstracted_identifiers["condition"][0],
+                    "consequent": non_abstracted_identifiers["consequent"][0],
+                    "identifiers": non_abstracted_identifiers}
+        else:
+            return {"condition": real_condition,
+                    "consequent": real_consequent,
+                    "identifiers": non_abstracted_identifiers}
 
 def tokens2Realcode(tokens):
     return "".join([" " * x[2] + x[0] for x in tokens])
-    
+
+def isIdentifiersReplace(condition, consequent, identifiers):
+    condition_set = set(identifiers["condition"])
+    consequent_set = set(identifiers["consequent"])
+    origin_condition = list(condition_set - consequent_set)
+    origin_consequent = list(consequent_set - condition_set)
+    return len(origin_condition) == len(origin_consequent) == 1 and\
+           condition.replace(origin_condition[0], origin_consequent[0]) == consequent
 
 def opt_tag2symbol(opt_tag):
     if opt_tag == "replace":
@@ -418,7 +432,7 @@ def devide_token_sequence(sequence):
         new_sequence.append(sequence[previous_index+1:index])
         previous_index = index
     if previous_index + 1 != len(sequence):
-        new_sequence.append(sequence[previous_index+1:])    
+        new_sequence.append(sequence[previous_index+1:])
     return new_sequence
 
 def IS_CHARACTER_JUNK(ch, ws=" \t\n"):
@@ -473,15 +487,26 @@ tf.summary.scalar('regularization_loss', regularization_loss)
 ],
 [
 """
-print(2, "hello")
+print("hello", 2)
 """,
 """
-print("hello", 2)
+printf("hello", hhh)
+"""
+],
+[
+"""
+    bisect_tests(options.bisect, options, options.modules, options.parallel)
+""",
+"""
+    bisect_tests(
+        options.bisect, options, options.modules, options.parallel,
+        options.start_at, options.start_after,
+    )
 """
 ]
 
 ]
-    TN = TokeNizer("Ruby")
+    TN = TokeNizer("Python")
     expect_out = [
     {
         "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -490,17 +515,17 @@ print("hello", 2)
     }
     ]
 
-    target = code[4]
+    target = code[5]
     result = TN.get_abstract_tree_diff(target[0], target[1])
     condition = result["condition"]
     consequent = result["consequent"]
+    # print(result)
+
     print(f"inputA:\n{target[0]}")
     print(condition)
-    print(tokens2Realcode(condition))
     print(f"inputB:\n{target[1]}")
     print(consequent)
-    print(tokens2Realcode(consequent))
-    # print(result["identifiers"])
+
 
 
 
