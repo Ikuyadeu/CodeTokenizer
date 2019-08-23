@@ -442,12 +442,8 @@ def clean_diff(diffs):
     return [x for x in diffs if not x.startswith("?")]
 
 def clean_symbol(tokens):
-    for i, token in enumerate(tokens):
-        if token[1] == "NEWLINE":
-            tokens[i] = ("\n", "NEWLINE", token[2], token[3])
-        elif token[1] == "INDENT":
-            tokens[i] = ("\t", "INDENT", token[2], token[3])
-    return tokens
+    return [("\n", "NEWLINE", x[2], x[3]) if x[1] == "NEWLINE" else\
+            ("\t", "INDENT", x[2], x[3]) if x[1] == "INDENT" else x for x in tokens]
 
 
 def main():
