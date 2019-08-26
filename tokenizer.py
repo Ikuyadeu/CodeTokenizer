@@ -124,7 +124,7 @@ class TokeNizer():
         return len(tokens)
 
     def getTree(self, code: str):
-        code = code.strip()
+        # code = code_trip(code)
         parser = self.Parser(CommonTokenStream(self.Lexer(InputStream(code))))
         parser.removeErrorListeners()
         if self.LANGUAGE == "Python":
@@ -365,7 +365,6 @@ class TokeNizer():
     def get_abstract_tree_diff(self, source, target):
         tokens_a = clean_symbol(self.getTokens(source))
         tokens_b = clean_symbol(self.getTokens(target))
-        print(tokens_b)
 
 
         abstract_index = 0
@@ -391,8 +390,9 @@ class TokeNizer():
                                                     if x[1] == self.IDENTIFIER_TAG])),
                                       "consequent": list(set([x[0] for x in tokens_b
                                                      if x[1] == self.IDENTIFIER_TAG]))}
-        real_condition = tokens2Realcode(tokens_a)
-        real_consequent = tokens2Realcode(tokens_b)
+        ispython = self.LANGUAGE == "Python"
+        real_condition = tokens2Realcode(tokens_a, ispython)
+        real_consequent = tokens2Realcode(tokens_b, ispython)
         if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
             return {"condition": non_abstracted_identifiers["condition"][0],
                     "consequent": non_abstracted_identifiers["consequent"][0],
@@ -402,8 +402,16 @@ class TokeNizer():
                     "consequent": real_consequent,
                     "identifiers": non_abstracted_identifiers}
 
-def tokens2Realcode(tokens):
-    return "".join([" " * x[2] + x[0] for x in tokens])
+def tokens2Realcode(tokens, ispython=False):
+    if ispython:
+        real_code = ""
+        for token in tokens:
+            if token[2] > 2:
+                real_code += "\n"
+            real_code += " " * token[2] + token[0]
+        return real_code
+    else:
+        return "".join([" " * x[2] + x[0] for x in tokens])
 
 
 def isIdentifiersReplace(condition, consequent, identifiers):
@@ -455,6 +463,10 @@ def clean_symbol(tokens):
             ("\t", "INDENT", x[2], x[3]) if x[1] == "INDENT" else x for x in tokens
             if x[0] != "<EOF>"]
 
+def code_trip(code):
+    splited_code = code.splitlines(keepends=True)
+    max_space = min(len(x) - len(x.lstrip()) for x in splited_code)
+    return "".join([x[max_space:] for x in splited_code])
 
 def main():
     code = [[
@@ -503,8 +515,7 @@ printf("hello", hhh)
 """
     bisect_tests(options.bisect, options, options.modules, options.parallel)
 """,
-"""
-    bisect_tests(
+"""    bisect_tests(
         options.bisect, options, options.modules, options.parallel,
         options.start_at, options.start_after,
     )
