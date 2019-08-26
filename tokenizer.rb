@@ -13,9 +13,3 @@ tokens = Ripper.lex(STDIN).map do |pos, type, str|
 end
 
 puts tokens.to_json
-
-[].each do |x|
-  foo(<<~EOF, "hello #{:world}", 'ho"\'ge')
-    寿限無寿限無五劫のすり切れ
-  EOF
-end

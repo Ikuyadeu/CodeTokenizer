@@ -1927,7 +1927,7 @@ Whitespace
    ;
 
 Newline
-   : ('\r' '\n'? | '\n') -> skip
+   : ('\r' '\n'? | '\n')
    ;
 
 BlockComment

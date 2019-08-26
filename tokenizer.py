@@ -3,6 +3,8 @@ from collections import Counter
 from antlr4 import TerminalNode, InputStream, CommonTokenStream
 from antlr4.error.ErrorListener import ConsoleErrorListener
 from difflib import ndiff, SequenceMatcher, Differ, ndiff
+import subprocess
+import json
 
 
 class TokeNizer():
@@ -40,8 +42,8 @@ class TokeNizer():
             self.STRING_TAG = "StringLiteral"
             self.NUMBER_TAG = "DecimalLiteral"
         elif self.LANGUAGE == "CPP":
-            from .grammers.CPP.CPP14Parser import CPP14Parser as Parser
-            from .grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
+            from grammers.CPP.CPP14Parser import CPP14Parser as Parser
+            from grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
             self.IDENTIFIER_TAG = "Identifier"
             self.STRING_TAG = "Stringliteral"
@@ -62,13 +64,11 @@ class TokeNizer():
 
     def getTokens(self, code):
         if self.LANGUAGE == "Ruby":
-            import subprocess, json
 
             try:
                 out = subprocess.Popen(['ruby', 'tokenizer.rb'], 
                 stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT)
+                stdout=subprocess.PIPE)
                 stdout, _ = out.communicate(input=code.encode())
             except:
                 return []
@@ -76,16 +76,18 @@ class TokeNizer():
             strings = self.makeRubySpace(s)
             return strings
         return self.makeTokens(self.getTree(code), [])
+        # tokens = [self.makeTokens(self.getTree(x), []) for x in code.splitlines()]
+        # return [y for x in tokens for y in x + [("\n", "NEWLINE", 0, 0)]]
 
     def makeRubySpace(self, strings):
         tokens = []
-        for i, s in enumerate([x for x in strings if x["string"] not in [" ", "\n"]]):
+        for i, s in enumerate([x for x in strings if x["string"] != " "]):
             if i > 0:
                 before_index = tokens[-1][3] + len(tokens[-1][0])
             else:
                 before_index = 0
             start = s["position"]["column"]
-            space = start - before_index            
+            space = start - before_index
             tokens.append((s["string"], s["type"], space, start))
         return tokens
 
@@ -123,12 +125,10 @@ class TokeNizer():
 
     def getTree(self, code: str):
         code = code.strip()
-        lexer = self.Lexer(InputStream(code))
-        stream = CommonTokenStream(lexer)
-        parser = self.Parser(stream)
+        parser = self.Parser(CommonTokenStream(self.Lexer(InputStream(code))))
         parser.removeErrorListeners()
         if self.LANGUAGE == "Python":
-            tree = parser.file_input()
+            tree = parser.single_input()
         elif self.LANGUAGE == "Java":
             tree = parser.compilationUnit()
         elif self.LANGUAGE == "JavaScript":
@@ -365,6 +365,8 @@ class TokeNizer():
     def get_abstract_tree_diff(self, source, target):
         tokens_a = clean_symbol(self.getTokens(source))
         tokens_b = clean_symbol(self.getTokens(target))
+        print(tokens_b)
+
 
         abstract_index = 0
         abstracted_identifiers = {}
@@ -379,6 +381,7 @@ class TokeNizer():
                 if token_b[0] in abstracted_identifiers:
                     tokens_b[j] = (f"${{{abstracted_identifiers[token_b[0]]}:{token_b[1]}}}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     continue
+                # if identifiers looks function
                 elif token_a[0] == token_b[0] and i + 1 < len(tokens_a) and tokens_a[i+1][0] != "(":
                     tokens_a[i] = (f"${{{abstract_index}:{token_a[1]}}}", "ABSTRACT_SNIPPET", token_a[2], token_a[3])
                     tokens_b[j] = (f"${{{abstract_index}:{token_b[1]}}}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
@@ -402,6 +405,7 @@ class TokeNizer():
 def tokens2Realcode(tokens):
     return "".join([" " * x[2] + x[0] for x in tokens])
 
+
 def isIdentifiersReplace(condition, consequent, identifiers):
     condition_set = set(identifiers["condition"])
     consequent_set = set(identifiers["consequent"])
@@ -409,6 +413,7 @@ def isIdentifiersReplace(condition, consequent, identifiers):
     origin_consequent = list(consequent_set - condition_set)
     return len(origin_condition) == len(origin_consequent) == 1 and\
            condition.replace(origin_condition[0], origin_consequent[0]) == consequent
+
 
 def opt_tag2symbol(opt_tag):
     if opt_tag == "replace":
@@ -421,6 +426,7 @@ def opt_tag2symbol(opt_tag):
         return "="
     else:
         return "?"
+
 
 def devide_token_sequence(sequence):
     if " " not in sequence:
@@ -435,15 +441,19 @@ def devide_token_sequence(sequence):
         new_sequence.append(sequence[previous_index+1:])
     return new_sequence
 
+
 def IS_CHARACTER_JUNK(ch, ws=" \t\n"):
     return ch in ws
+
 
 def clean_diff(diffs):
     return [x for x in diffs if not x.startswith("?")]
 
+
 def clean_symbol(tokens):
     return [("\n", "NEWLINE", x[2], x[3]) if x[1] == "NEWLINE" else\
-            ("\t", "INDENT", x[2], x[3]) if x[1] == "INDENT" else x for x in tokens]
+            ("\t", "INDENT", x[2], x[3]) if x[1] == "INDENT" else x for x in tokens
+            if x[0] != "<EOF>"]
 
 
 def main():
@@ -502,14 +512,14 @@ printf("hello", hhh)
 ]
 
 ]
-    TN = TokeNizer("Python")
-    expect_out = [
-    {
-        "condition": ["for ${1:i} in range(len(${2:my_array})):",
-                       "\t${3:element} = ${2:array}[${1:element}]"],
-        "consequent": ["for ${1:i}, ${3:element} in enumerate(${2:my_array}):"]
-    }
-    ]
+    TN = TokeNizer("CPP")
+    # expect_out = [
+    # {
+    #     "condition": ["for ${1:i} in range(len(${2:my_array})):",
+    #                    "\t${3:element} = ${2:array}[${1:element}]"],
+    #     "consequent": ["for ${1:i}, ${3:element} in enumerate(${2:my_array}):"]
+    # }
+    # ]
 
     target = code[5]
     result = TN.get_abstract_tree_diff(target[0], target[1])
