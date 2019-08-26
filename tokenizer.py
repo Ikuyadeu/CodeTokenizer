@@ -42,8 +42,8 @@ class TokeNizer():
             self.STRING_TAG = "StringLiteral"
             self.NUMBER_TAG = "DecimalLiteral"
         elif self.LANGUAGE == "CPP":
-            from grammers.CPP.CPP14Parser import CPP14Parser as Parser
-            from grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
+            from .grammers.CPP.CPP14Parser import CPP14Parser as Parser
+            from .grammers.CPP.CPP14Lexer import CPP14Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
             self.IDENTIFIER_TAG = "Identifier"
             self.STRING_TAG = "Stringliteral"
@@ -512,7 +512,7 @@ printf("hello", hhh)
 ]
 
 ]
-    TN = TokeNizer("CPP")
+    TN = TokeNizer("Python")
     # expect_out = [
     # {
     #     "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -527,8 +527,8 @@ printf("hello", hhh)
     consequent = result["consequent"]
     # print(result)
 
-    print(f"inputA:\n{target[0]}")
-    print(condition)
+    # print(f"inputA:\n{target[0]}")
+    # print(condition)
     print(f"inputB:\n{target[1]}")
     print(consequent)
 

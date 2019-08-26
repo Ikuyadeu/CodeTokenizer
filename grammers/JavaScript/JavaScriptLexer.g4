@@ -179,7 +179,7 @@ TemplateStringLiteral:          '`' ('\\`' | ~'`')* '`';
 
 WhiteSpaces:                    [\t\u000B\u000C\u0020\u00A0]+ -> channel(HIDDEN);
 
-LineTerminator:                 [\r\n\u2028\u2029] -> channel(HIDDEN);
+LineTerminator:                 [\r\n\u2028\u2029];
 
 /// Comments
 
