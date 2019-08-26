@@ -75,6 +75,8 @@ class TokeNizer():
             s = json.loads(stdout.decode('utf-8'))
             strings = self.makeRubySpace(s)
             return strings
+        if self.LANGUAGE == "Python":
+            return self.makeTokensPython(self.getTree(code), [])
         return self.makeTokens(self.getTree(code), [])
         # tokens = [self.makeTokens(self.getTree(x), []) for x in code.splitlines()]
         # return [y for x in tokens for y in x + [("\n", "NEWLINE", 0, 0)]]
@@ -145,7 +147,8 @@ class TokeNizer():
             symbollic_name = self.VOCABULARY[tree.symbol.type]
             if symbollic_name not in self.IGNORE_CONTENTS:
                 if len(tokens) > 0:
-                    before_index = tokens[-1][3] + len(tokens[-1][0])
+                    previous_token = tokens[-1]
+                    before_index = previous_token[3] + len(previous_token[0])
                 else:
                     before_index = 0
                 start = tree.getPayload().start
@@ -158,6 +161,32 @@ class TokeNizer():
             self.makeTokens(tree2, tokens)
         return tokens
 
+
+
+    def makeTokensPython(self, tree, tokens: list):
+        if isinstance(tree, TerminalNode):
+            symbollic_name = self.VOCABULARY[tree.symbol.type]
+            if symbollic_name not in self.IGNORE_CONTENTS:
+                line = tree.parentCtx.start.line
+                if len(tokens) > 0:
+                    previous_token = tokens[-1]
+                    before_index = previous_token[3] + len(previous_token[0])
+
+                    if line < previous_token[4]:
+                        line = previous_token[4]
+                    elif line > previous_token[4]:
+                        tokens.append(("\n" * (line - previous_token[4]), "new_line", 0, previous_token[3], previous_token[4]))
+                else:
+                    before_index = 0
+                start = tree.getPayload().start
+                space = start - before_index
+                string = tree.getText()
+                if not string.startswith("<missing"):
+                    tokens.append((string, symbollic_name, space, start, line))
+        for i in range(tree.getChildCount()):
+            tree2 = tree.getChild(i)
+            self.makeTokensPython(tree2, tokens)
+        return tokens
     def makeNotLCS(self):
         """
         Not Longest Commmon SubSequence(not SubString)
@@ -365,6 +394,7 @@ class TokeNizer():
     def get_abstract_tree_diff(self, source, target):
         tokens_a = clean_symbol(self.getTokens(source))
         tokens_b = clean_symbol(self.getTokens(target))
+        print(tokens_b)
 
 
         abstract_index = 0
@@ -390,9 +420,8 @@ class TokeNizer():
                                                     if x[1] == self.IDENTIFIER_TAG])),
                                       "consequent": list(set([x[0] for x in tokens_b
                                                      if x[1] == self.IDENTIFIER_TAG]))}
-        ispython = self.LANGUAGE == "Python"
-        real_condition = tokens2Realcode(tokens_a, ispython)
-        real_consequent = tokens2Realcode(tokens_b, ispython)
+        real_condition = tokens2Realcode(tokens_a)
+        real_consequent = tokens2Realcode(tokens_b)
         if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
             return {"condition": non_abstracted_identifiers["condition"][0],
                     "consequent": non_abstracted_identifiers["consequent"][0],
@@ -402,16 +431,8 @@ class TokeNizer():
                     "consequent": real_consequent,
                     "identifiers": non_abstracted_identifiers}
 
-def tokens2Realcode(tokens, ispython=False):
-    if ispython:
-        real_code = ""
-        for token in tokens:
-            if token[2] > 2:
-                real_code += "\n"
-            real_code += " " * token[2] + token[0]
-        return real_code
-    else:
-        return "".join([" " * x[2] + x[0] for x in tokens])
+def tokens2Realcode(tokens):
+    return "".join([" " * x[2] + x[0] for x in tokens])
 
 
 def isIdentifiersReplace(condition, consequent, identifiers):
@@ -459,8 +480,8 @@ def clean_diff(diffs):
 
 
 def clean_symbol(tokens):
-    return [("\n", "NEWLINE", x[2], x[3]) if x[1] == "NEWLINE" else\
-            ("\t", "INDENT", x[2], x[3]) if x[1] == "INDENT" else x for x in tokens
+    return [("\n", "NEWLINE", x[2], x[3], x[4]) if x[1] == "NEWLINE" else\
+            ("\t", "INDENT", x[2], x[3], x[4]) if x[1] == "INDENT" else x for x in tokens
             if x[0] != "<EOF>"]
 
 def code_trip(code):
@@ -515,10 +536,10 @@ printf("hello", hhh)
 """
     bisect_tests(options.bisect, options, options.modules, options.parallel)
 """,
-"""    bisect_tests(
-        options.bisect, options, options.modules, options.parallel,
-        options.start_at, options.start_after,
-    )
+"""bisect_tests(
+    options.bisect, options, options.modules, options.parallel,
+    options.start_at, options.start_after,
+)
 """
 ]
 
