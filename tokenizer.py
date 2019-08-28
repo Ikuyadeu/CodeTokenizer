@@ -394,8 +394,6 @@ class TokeNizer():
     def get_abstract_tree_diff(self, source, target):
         tokens_a = clean_symbol(self.getTokens(source))
         tokens_b = clean_symbol(self.getTokens(target))
-        print(tokens_b)
-
 
         abstract_index = 0
         abstracted_identifiers = {}
