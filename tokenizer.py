@@ -48,6 +48,13 @@ class TokeNizer():
             self.IDENTIFIER_TAG = "Identifier"
             self.STRING_TAG = "Stringliteral"
             self.NUMBER_TAG = "Integerliteral"
+        elif self.LANGUAGE == "PHP":
+            from .grammers.PHP.PhpParser import PhpParser as Parser
+            from .grammers.PHP.PhpLexer import PhpLexer as Lexer
+            self.VOCABULARY = Parser.symbolicNames
+            self.IDENTIFIER_TAG = "VarName"
+            self.STRING_TAG = "StringPart"
+            self.NUMBER_TAG = "Decimal"
         elif self.LANGUAGE == "Ruby":
             self.IDENTIFIER_TAG = "ident"
             self.STRING_TAG = "tstring_content"
@@ -137,6 +144,8 @@ class TokeNizer():
             tree = parser.program()
         elif self.LANGUAGE == "CPP":
             tree = parser.translationunit()
+        elif self.LANGUAGE == "PHP":
+            tree = parser.htmlDocument()
         else:
             tree = parser.single_input()
 
@@ -539,10 +548,19 @@ printf("hello", hhh)
     options.start_at, options.start_after,
 )
 """
+],
+[
+"""
+a.b.create!(path: \"aaa\")
+""",
+
+"""
+a.b.create!(name: \"aaa\")
+"""
 ]
 
 ]
-    TN = TokeNizer("Python")
+    TN = TokeNizer("PHP")
     # expect_out = [
     # {
     #     "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -551,7 +569,7 @@ printf("hello", hhh)
     # }
     # ]
 
-    target = code[5]
+    target = code[6]
     result = TN.get_abstract_tree_diff(target[0], target[1])
     condition = result["condition"]
     consequent = result["consequent"]
