@@ -429,14 +429,14 @@ class TokeNizer():
                                                      if x[1] == self.IDENTIFIER_TAG]))}
         real_condition = tokens2Realcode(tokens_a)
         real_consequent = tokens2Realcode(tokens_b)
-        if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
-            return {"condition": non_abstracted_identifiers["condition"][0],
-                    "consequent": non_abstracted_identifiers["consequent"][0],
-                    "identifiers": non_abstracted_identifiers}
-        else:
-            return {"condition": real_condition,
-                    "consequent": real_consequent,
-                    "identifiers": non_abstracted_identifiers}
+        # if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
+        #     return {"condition": non_abstracted_identifiers["condition"][0],
+        #             "consequent": non_abstracted_identifiers["consequent"][0],
+        #             "identifiers": non_abstracted_identifiers}
+        # else:
+        return {"condition": real_condition,
+                "consequent": real_consequent,
+                "identifiers": non_abstracted_identifiers}
 
 def tokens2Realcode(tokens):
     return "".join([" " * x[2] + x[0] for x in tokens])
