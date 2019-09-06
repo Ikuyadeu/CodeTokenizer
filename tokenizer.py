@@ -3,20 +3,13 @@ from collections import Counter
 from antlr4 import TerminalNode, InputStream, CommonTokenStream
 from antlr4.error.ErrorListener import ConsoleErrorListener
 from difflib import ndiff, SequenceMatcher, Differ, ndiff
-import subprocess
+from subprocess import Popen, PIPE
 import json
 
 
 class TokeNizer():
     IGNORE_CONTENTS = ["ENDMARKER","DEDENT"]
     IDENTIFIER_TAG = ""
-
-    CONTENT = 0
-    SYMBOL = 1
-
-    LCS_FLAG = 0
-    DIFF_FLAG = 1
-    LD_FLAG = 2
 
     def __init__(self, language: str):
         self.LANGUAGE = language
@@ -73,15 +66,12 @@ class TokeNizer():
         if self.LANGUAGE == "Ruby":
 
             try:
-                out = subprocess.Popen(['ruby', 'tokenizer.rb'], 
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE)
+                out = Popen(['ruby', 'tokenizer.rb'], stdin=PIPE, stdout=PIPE)
                 stdout, _ = out.communicate(input=code.encode())
             except:
                 return []
             s = json.loads(stdout.decode('utf-8'))
-            strings = self.makeRubySpace(s)
-            return strings
+            return self.makeRubySpace(s)
         if self.LANGUAGE == "Python":
             return self.makeTokensPython(self.getTree(code), [])
         return self.makeTokens(self.getTree(code), [])
@@ -91,13 +81,9 @@ class TokeNizer():
     def makeRubySpace(self, strings):
         tokens = []
         for i, s in enumerate([x for x in strings if x["string"] != " "]):
-            if i > 0:
-                before_index = tokens[-1][3] + len(tokens[-1][0])
-            else:
-                before_index = 0
+            before_index = tokens[-1][3] + len(tokens[-1][0]) if i > 0 else 0
             start = s["position"]["column"]
-            space = start - before_index
-            tokens.append((s["string"], s["type"], space, start))
+            tokens.append((s["string"], s["type"], start - before_index, start))
         return tokens
 
     def getPureTokens(self, code):
@@ -107,30 +93,6 @@ class TokeNizer():
             return [x[0] for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
         except:
             return []
-
-    def set_code(self, code_a: str, code_b: str):
-        self.code_a = code_a
-        self.code_b = code_b
-        self.tokens_a = self.makeTokens(self.getTree(code_a), [])
-        self.tokens_b = self.makeTokens(self.getTree(code_b), [])
-
-    def set_diff(self, flag: int):
-        if flag == self.LCS_FLAG:
-            self.diff = self.makeNotLCS()
-        elif flag == self.DIFF_FLAG:
-            self.diff = self.makeNotDup()
-        elif flag == self.LD_FLAG:
-            self.diff = self.makeLD()
-        else:
-            self.diff = self.makeNotDup()
-
-    def isInstanceChange(self, instance_name):
-        return any([token[self.SYMBOL] == instance_name for token in self.diff])
-
-    def getTokenCount(self, code: str):
-        tree = self.getTree(code)
-        tokens = self.makeTokens(tree, [])
-        return len(tokens)
 
     def getTree(self, code: str):
         # code = code_trip(code)
@@ -171,7 +133,6 @@ class TokeNizer():
         return tokens
 
 
-
     def makeTokensPython(self, tree, tokens: list):
         if isinstance(tree, TerminalNode):
             symbollic_name = self.VOCABULARY[tree.symbol.type]
@@ -196,49 +157,49 @@ class TokeNizer():
             tree2 = tree.getChild(i)
             self.makeTokensPython(tree2, tokens)
         return tokens
-    def makeNotLCS(self):
+    def makeNotLCS(self, tokens_a, tokens_b):
         """
         Not Longest Commmon SubSequence(not SubString)
         """
-        lcl_result = Counter(self.makeLCS())
-        sub_lcl_a = list((Counter(self.tokens_a) - lcl_result).elements())
-        sub_lcl_b = list((Counter(self.tokens_b) - lcl_result).elements())
+        lcl_result = Counter(self.makeLCS(tokens_a, tokens_b))
+        sub_lcl_a = list((Counter(tokens_a) - lcl_result).elements())
+        sub_lcl_b = list((Counter(tokens_b) - lcl_result).elements())
         return sub_lcl_a + sub_lcl_b
 
-    def makeLCS(self):
+    def makeLCS(self, tokens_a, tokens_b):
         """
         Longest Commmon SubSequence(not SubString)
         """
-        lengths = [[0 for j in range(len(self.tokens_b)+1)]
-                   for i in range(len(self.tokens_a)+1)]
+        lengths = [[0 for j in range(len(tokens_b)+1)]
+                   for i in range(len(tokens_a)+1)]
         # row 0 and column 0 are initialized to 0 already
-        for i, x in enumerate(self.tokens_a):
-            for j, y in enumerate(self.tokens_b):
+        for i, x in enumerate(tokens_a):
+            for j, y in enumerate(tokens_b):
                 if x == y:
                     lengths[i+1][j+1] = lengths[i][j] + 1
                 else:
                     lengths[i+1][j+1] = max(lengths[i+1][j], lengths[i][j+1])
         # read the substring out from the matrix
         result = []
-        x, y = len(self.tokens_a), len(self.tokens_b)
+        x, y = len(tokens_a), len(tokens_b)
         while x != 0 and y != 0:
             if lengths[x][y] == lengths[x-1][y]:
                 x -= 1
             elif lengths[x][y] == lengths[x][y-1]:
                 y -= 1
             else:
-                assert self.tokens_a[x-1] == self.tokens_b[y-1]
-                result.append(self.tokens_a[x-1])
+                assert tokens_a[x-1] == tokens_b[y-1]
+                result.append(tokens_a[x-1])
                 x -= 1
                 y -= 1
         return result
 
-    def makeLD(self):
+    def makeLD(self, tokens_a, tokens_b):
         """
         Levenshtein Distance
         """
-        s = self.tokens_a
-        t = self.tokens_b
+        s = tokens_a
+        t = tokens_b
         rows = len(s)+1
         cols = len(t)+1
         dist = [[0 for x in range(cols)] for x in range(rows)]
@@ -277,11 +238,6 @@ class TokeNizer():
                     dist2[row][col] = dist2[row-1][col] + [s[row-1]]
 
         return dist2[row0][col0]
-
-    def makeNotDup(self):
-        c_a = Counter(self.tokens_a)
-        c_b = Counter(self.tokens_b)
-        return list((c_a - c_b).elements()) + list((c_b - c_a).elements())
 
     def make_change_set(self, source, target):
         change_set = {}
@@ -429,11 +385,7 @@ class TokeNizer():
                                                      if x[1] == self.IDENTIFIER_TAG]))}
         real_condition = tokens2Realcode(tokens_a)
         real_consequent = tokens2Realcode(tokens_b)
-        # if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
-        #     return {"condition": non_abstracted_identifiers["condition"][0],
-        #             "consequent": non_abstracted_identifiers["consequent"][0],
-        #             "identifiers": non_abstracted_identifiers}
-        # else:
+
         return {"condition": real_condition,
                 "consequent": real_consequent,
                 "identifiers": non_abstracted_identifiers}
@@ -560,7 +512,7 @@ a.b.create!(name: \"aaa\")
 ]
 
 ]
-    TN = TokeNizer("PHP")
+    TN = TokeNizer("Ruby")
     # expect_out = [
     # {
     #     "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -575,8 +527,8 @@ a.b.create!(name: \"aaa\")
     consequent = result["consequent"]
     # print(result)
 
-    # print(f"inputA:\n{target[0]}")
-    # print(condition)
+    print(f"inputA:\n{target[0]}")
+    print(condition)
     print(f"inputB:\n{target[1]}")
     print(consequent)
 
