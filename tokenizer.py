@@ -379,16 +379,16 @@ class TokeNizer():
                     tokens_b[j] = (f"${{{abstract_index}:{token_b[1]}}}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     abstracted_identifiers[token_a[0]] = abstract_index
                     abstract_index += 1
-        non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
-                                                    if x[1] == self.IDENTIFIER_TAG])),
-                                      "consequent": list(set([x[0] for x in tokens_b
-                                                     if x[1] == self.IDENTIFIER_TAG]))}
+        # non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
+        #                                             if x[1] == self.IDENTIFIER_TAG])),
+        #                               "consequent": list(set([x[0] for x in tokens_b
+        #                                              if x[1] == self.IDENTIFIER_TAG]))}
         real_condition = tokens2Realcode(tokens_a)
         real_consequent = tokens2Realcode(tokens_b)
 
         return {"condition": real_condition,
                 "consequent": real_consequent,
-                "identifiers": non_abstracted_identifiers}
+                "abstracted": {v: k for k, v in abstracted_identifiers.items()}}
 
 def tokens2Realcode(tokens):
     return "".join([" " * x[2] + x[0] for x in tokens])
