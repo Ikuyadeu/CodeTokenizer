@@ -379,12 +379,16 @@ class TokeNizer():
                     tokens_b[j] = (f"${{{abstract_index}:{token_b[1]}}}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     abstracted_identifiers[token_a[0]] = abstract_index
                     abstract_index += 1
-        # non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
-        #                                             if x[1] == self.IDENTIFIER_TAG])),
-        #                               "consequent": list(set([x[0] for x in tokens_b
-        #                                              if x[1] == self.IDENTIFIER_TAG]))}
+        non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
+                                                    if x[1] == self.IDENTIFIER_TAG])),
+                                      "consequent": list(set([x[0] for x in tokens_b
+                                                     if x[1] == self.IDENTIFIER_TAG]))}
         real_condition = tokens2Realcode(tokens_a)
         real_consequent = tokens2Realcode(tokens_b)
+        if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
+            return {"condition": non_abstracted_identifiers["condition"][0],
+                    "consequent": non_abstracted_identifiers["consequent"][0],
+                    "abstracted": {}}
 
         return {"condition": real_condition,
                 "consequent": real_consequent,
