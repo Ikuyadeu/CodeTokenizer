@@ -103,7 +103,7 @@ class TokeNizer():
         elif self.LANGUAGE == "Java":
             tree = parser.compilationUnit()
         elif self.LANGUAGE == "JavaScript":
-            tree = parser.program()
+            tree = parser.sourceElement()
         elif self.LANGUAGE == "CPP":
             tree = parser.translationunit()
         elif self.LANGUAGE == "PHP":
