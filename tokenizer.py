@@ -13,6 +13,12 @@ class TokeNizer():
 
     def __init__(self, language: str):
         self.LANGUAGE = language
+        if self.LANGUAGE == "Ruby":
+            self.IDENTIFIER_TAG = "ident"
+            self.STRING_TAG = "tstring_content"
+            self.NUMBER_TAG = "int"
+            return
+
         if self.LANGUAGE == "Python":
             from .grammers.Python.Python3Parser import Python3Parser as Parser
             from .grammers.Python.Python3Lexer import Python3Lexer as Lexer
@@ -48,11 +54,20 @@ class TokeNizer():
             self.IDENTIFIER_TAG = "VarName"
             self.STRING_TAG = "StringPart"
             self.NUMBER_TAG = "Decimal"
-        elif self.LANGUAGE == "Ruby":
-            self.IDENTIFIER_TAG = "ident"
-            self.STRING_TAG = "tstring_content"
-            self.NUMBER_TAG = "int"
-            return
+        elif self.LANGUAGE == "Go":
+            from .grammers.Go.GoParser import GoParser as Parser
+            from .grammers.Go.GoLexer import GoLexer as Lexer
+            self.VOCABULARY = Parser.symbolicNames
+            self.IDENTIFIER_TAG = "IDENTIFIER"
+            self.STRING_TAG = "INTERPRETED_STRING_LIT"
+            self.NUMBER_TAG = "DECIMAL_LIT"
+        elif self.LANGUAGE == "Dart":
+            from .grammers.Dart.Dart2Parser import Dart2Parser as Parser
+            from .grammers.Dart.Dart2Lexer import Dart2Lexer as Lexer
+            self.VOCABULARY = Parser.symbolicNames
+            self.IDENTIFIER_TAG = "identifier"
+            self.STRING_TAG = "stringLiteral"
+            self.NUMBER_TAG = "numericLiteral"
         else:
             print("Unknown Language, so solve as Python")
             from .grammers.Python.Python3Parser import Python3Parser as Parser
@@ -108,6 +123,10 @@ class TokeNizer():
             tree = parser.translationunit()
         elif self.LANGUAGE == "PHP":
             tree = parser.htmlDocument()
+        elif self.LANGUAGE == "Dart":
+            tree = parser.compilationUnit()
+        elif self.LANGUAGE == "Go":
+            tree = parser.block()
         else:
             tree = parser.single_input()
 
