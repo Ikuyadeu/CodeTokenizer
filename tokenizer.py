@@ -65,9 +65,9 @@ class TokeNizer():
             from .grammers.Dart.Dart2Parser import Dart2Parser as Parser
             from .grammers.Dart.Dart2Lexer import Dart2Lexer as Lexer
             self.VOCABULARY = Parser.symbolicNames
-            self.IDENTIFIER_TAG = "identifier"
-            self.STRING_TAG = "stringLiteral"
-            self.NUMBER_TAG = "numericLiteral"
+            self.IDENTIFIER_TAG = "IDENTIFIER"
+            self.STRING_TAG = "SingleLineString"
+            self.NUMBER_TAG = "NUMBER"
         else:
             print("Unknown Language, so solve as Python")
             from .grammers.Python.Python3Parser import Python3Parser as Parser

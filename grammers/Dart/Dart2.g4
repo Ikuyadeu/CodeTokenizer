@@ -36,7 +36,7 @@ compilationUnit: libraryDefinition | partDeclaration;
 
 WHITESPACE
 //  : ('\t' | ' ' | NEWLINE)+   -> skip
-  :  [ \t\r\n\u000C]+ -> skip
+  :  [ \t\r\n\u000C]+
   ;
 
 // 8 Variables
