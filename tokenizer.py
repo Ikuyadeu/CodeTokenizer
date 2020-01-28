@@ -18,6 +18,11 @@ class TokeNizer():
             self.STRING_TAG = "tstring_content"
             self.NUMBER_TAG = "int"
             return
+        if self.LANGUAGE == "Go":
+            self.IDENTIFIER_TAG = "IDENT"
+            self.STRING_TAG = "STRING"
+            self.NUMBER_TAG = "INT"
+            return
 
         if self.LANGUAGE == "Python":
             from .grammers.Python.Python3Parser import Python3Parser as Parser
@@ -54,13 +59,6 @@ class TokeNizer():
             self.IDENTIFIER_TAG = "VarName"
             self.STRING_TAG = "StringPart"
             self.NUMBER_TAG = "Decimal"
-        elif self.LANGUAGE == "Go":
-            from .grammers.Go.GoParser import GoParser as Parser
-            from .grammers.Go.GoLexer import GoLexer as Lexer
-            self.VOCABULARY = Parser.symbolicNames
-            self.IDENTIFIER_TAG = "IDENTIFIER"
-            self.STRING_TAG = "INTERPRETED_STRING_LIT"
-            self.NUMBER_TAG = "DECIMAL_LIT"
         elif self.LANGUAGE == "Dart":
             from .grammers.Dart.Dart2Parser import Dart2Parser as Parser
             from .grammers.Dart.Dart2Lexer import Dart2Lexer as Lexer
@@ -87,6 +85,18 @@ class TokeNizer():
                 return []
             s = json.loads(stdout.decode('utf-8'))
             return self.makeRubySpace(s)
+
+        if self.LANGUAGE == "Go":
+            try:
+                out = Popen(['CodeTokenizer/tokenizer_go'], stdin=PIPE, stdout=PIPE)
+                stdout, _ = out.communicate(input=code.encode())
+            except:
+                print("failed")
+                return []
+            s = json.loads(stdout.decode('utf-8'))
+            return self.makeGoSpace(s)
+
+
         if self.LANGUAGE == "Python":
             return self.makeTokensPython(self.getTree(code), [])
         return self.makeTokens(self.getTree(code), [])
@@ -100,10 +110,18 @@ class TokeNizer():
             start = s["position"]["column"]
             tokens.append((s["string"], s["type"], start - before_index, start))
         return tokens
+    
+    def makeGoSpace(self, strings):
+        tokens = []
+        for i, s in enumerate([x for x in strings if x["Str"] != " "]):
+            before_index = tokens[-1][3] + len(tokens[-1][0]) if i > 0 else 0
+            start = s["Position"]["Column"]
+            tokens.append((s["Str"], s["Category"], start - before_index, start))
+        return tokens
 
     def getPureTokens(self, code):
         try:
-            if self.LANGUAGE == "Ruby":
+            if self.LANGUAGE in ["Ruby", "Go"]:
                 return [x for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
             return [x[0] for x in self.getTokens(code) if not (x[0].startswith("<") and x[0].endswith(">"))]
         except:
@@ -532,10 +550,14 @@ a.b.create!(path: \"aaa\")
 """
 a.b.create!(name: \"aaa\")
 """
+],
+[
+"""stdin := bufio.NewScanner(os.Stdin)""",
+"""stdout := bufio.NewScanner(os.Stdin)"""
 ]
 
 ]
-    TN = TokeNizer("Ruby")
+    TN = TokeNizer("Go")
     # expect_out = [
     # {
     #     "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -544,7 +566,7 @@ a.b.create!(name: \"aaa\")
     # }
     # ]
 
-    target = code[6]
+    target = code[7]
     result = TN.get_abstract_tree_diff(target[0], target[1])
     condition = result["condition"]
     consequent = result["consequent"]
