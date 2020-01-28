@@ -432,7 +432,7 @@ class TokeNizer():
                 "abstracted": {v: k for k, v in abstracted_identifiers.items()}}
 
 def tokens2Realcode(tokens):
-    return "".join([" "*x[2] + x[0] for x in +tokens])
+    return "".join([" "*x[2] + x[0] for x in tokens])
 
 
 def isIdentifiersReplace(condition, consequent, identifiers):
