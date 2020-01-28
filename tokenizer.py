@@ -182,7 +182,7 @@ class TokeNizer():
                     if line < previous_token[4]:
                         line = previous_token[4]
                     elif line > previous_token[4]:
-                        tokens.append(("\n" * (line - previous_token[4]), "new_line", 0, previous_token[3], previous_token[4]))
+                        tokens.append(("\n"*(line - previous_token[4]), "new_line", 0, previous_token[3], previous_token[4]))
                 else:
                     before_index = 0
                 start = tree.getPayload().start
@@ -432,7 +432,7 @@ class TokeNizer():
                 "abstracted": {v: k for k, v in abstracted_identifiers.items()}}
 
 def tokens2Realcode(tokens):
-    return "".join([" " * x[2] + x[0] for x in tokens])
+    return "".join([" "*x[2] + x[0] for x in +tokens])
 
 
 def isIdentifiersReplace(condition, consequent, identifiers):
