@@ -7,7 +7,7 @@ Tokenize Multi Language Code
 1. Get antlr4-python3-runtime and this repository
 
 ```sh
-pip install antlr4-python3-runtime
+pip3 install antlr4-python3-runtime
 git clone https://github.com/Ikuyadeu/CodeTokenizer.git
 ```
 

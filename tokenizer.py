@@ -66,6 +66,13 @@ class TokeNizer():
             self.IDENTIFIER_TAG = "IDENTIFIER"
             self.STRING_TAG = "SingleLineString"
             self.NUMBER_TAG = "NUMBER"
+        elif self.LANGUAGE == "R":
+            from .grammers.R.RParser import RParser as Parser
+            from .grammers.R.RLexer import RLexer as Lexer
+            self.VOCABULARY = Parser.symbolicNames
+            self.IDENTIFIER_TAG = "ID"
+            self.STRING_TAG = "STRING"
+            self.NUMBER_TAG = "INT"
         else:
             print("Unknown Language, so solve as Python")
             from .grammers.Python.Python3Parser import Python3Parser as Parser
@@ -128,8 +135,8 @@ class TokeNizer():
             return []
 
     def getTree(self, code: str):
-        # code = code_trip(code)
-        parser = self.Parser(CommonTokenStream(self.Lexer(InputStream(code))))
+        tokens = CommonTokenStream(self.Lexer(InputStream(code)))
+        parser = self.Parser(tokens)
         parser.removeErrorListeners()
         if self.LANGUAGE == "Python":
             tree = parser.single_input()
@@ -145,6 +152,8 @@ class TokeNizer():
             tree = parser.compilationUnit()
         elif self.LANGUAGE == "Go":
             tree = parser.block()
+        elif self.LANGUAGE == "R":
+            tree = parser.prog()
         else:
             tree = parser.single_input()
 
@@ -554,10 +563,14 @@ a.b.create!(name: \"aaa\")
 [
 """stdin := bufio.NewScanner(os.Stdin)""",
 """stdout := bufio.NewScanner(os.Stdin)"""
+],
+[
+"""c <- 1""",
+"""c <- 0"""
 ]
 
 ]
-    TN = TokeNizer("Go")
+    TN = TokeNizer("R")
     # expect_out = [
     # {
     #     "condition": ["for ${1:i} in range(len(${2:my_array})):",
@@ -566,11 +579,11 @@ a.b.create!(name: \"aaa\")
     # }
     # ]
 
-    target = code[7]
+    target = code[8]
     result = TN.get_abstract_tree_diff(target[0], target[1])
     condition = result["condition"]
     consequent = result["consequent"]
-    # print(result)
+    print(result)
 
     print(f"inputA:\n{target[0]}")
     print(condition)
