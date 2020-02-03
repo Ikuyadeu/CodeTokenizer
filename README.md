@@ -25,11 +25,14 @@ print(TN.getPureTokens(code))
 
 ## Supported Languages
 
-* Python
-* Java
-* JavaScript
-* C++
-* Ruby
+* Python(Python)
+* Java(Java)
+* JavaScript/TypeScript(JavaScript)
+* C/C++(CPP)
+* Ruby(Ruby)
+* Go(Go)
+* R(R)
+* PHP(PHP)
 
 
 ## Thanks
