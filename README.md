@@ -33,6 +33,7 @@ print(TN.getPureTokens(code))
 * Go(Go)
 * R(R)
 * PHP(PHP)
+* Dart(Dart)
 
 
 ## Thanks
