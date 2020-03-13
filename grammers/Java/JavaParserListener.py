@@ -944,3 +944,5 @@ class JavaParserListener(ParseTreeListener):
         pass
 
 
+
+del JavaParser

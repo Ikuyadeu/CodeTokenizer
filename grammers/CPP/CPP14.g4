@@ -709,6 +709,7 @@ balancedtoken
    : '(' balancedtokenseq ')'
    | '[' balancedtokenseq ']'
    | '{' balancedtokenseq '}'
+   | ~('('|')'|'{'|'}'|'['|']')+
    ;
 /*Declarators*/
 
@@ -1927,7 +1928,7 @@ Whitespace
    ;
 
 Newline
-   : ('\r' '\n'? | '\n')
+   : ('\r' '\n'? | '\n') -> skip
    ;
 
 BlockComment

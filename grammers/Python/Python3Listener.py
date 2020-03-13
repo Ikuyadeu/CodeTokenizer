@@ -782,3 +782,5 @@ class Python3Listener(ParseTreeListener):
         pass
 
 
+
+del Python3Parser
