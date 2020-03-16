@@ -95,10 +95,10 @@ class TokeNizer():
 
         if self.LANGUAGE == "Go":
             try:
-                out = Popen(['CodeTokenizer/tokenizer_go'], stdin=PIPE, stdout=PIPE)
+                out = Popen(['./CodeTokenizer/tokenizer_go'], stdin=PIPE, stdout=PIPE)
                 stdout, _ = out.communicate(input=code.encode())
-            except:
-                print("failed")
+            except Exception as e:
+                print(e)
                 return []
             s = json.loads(stdout.decode('utf-8'))
             return self.makeGoSpace(s)
@@ -565,12 +565,12 @@ a.b.create!(name: \"aaa\")
 """stdout := bufio.NewScanner(os.Stdin)"""
 ],
 [
-"""c <- 1""",
-"""c <- 0"""
+"""c = 1""",
+"""b = 1"""
 ]
 
 ]
-    TN = TokeNizer("R")
+    TN = TokeNizer("Go")
     # expect_out = [
     # {
     #     "condition": ["for ${1:i} in range(len(${2:my_array})):",
