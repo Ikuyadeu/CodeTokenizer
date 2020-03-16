@@ -101,6 +101,8 @@ class TokeNizer():
                 print(e)
                 return []
             s = json.loads(stdout.decode('utf-8'))
+            if s is None:
+                return []
             return self.makeGoSpace(s)
 
 
