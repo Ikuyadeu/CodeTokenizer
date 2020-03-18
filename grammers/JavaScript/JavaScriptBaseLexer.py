@@ -85,3 +85,6 @@ class JavaScriptBaseLexer(Lexer):
             return False
 
         return True
+
+    def IsStartOfFile(self) -> bool:
+        return self.lastToken is None
