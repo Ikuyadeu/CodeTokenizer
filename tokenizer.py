@@ -427,10 +427,10 @@ class TokeNizer():
                     tokens_b[j] = (f"${{{abstract_index}:{token_b[1]}}}", "ABSTRACT_SNIPPET", token_b[2], token_b[3])
                     abstracted_identifiers[token_a[0]] = abstract_index
                     abstract_index += 1
-        non_abstracted_identifiers = {"condition": list(set([x[0] for x in tokens_a
-                                                    if x[1] == self.IDENTIFIER_TAG])),
-                                      "consequent": list(set([x[0] for x in tokens_b
-                                                     if x[1] == self.IDENTIFIER_TAG]))}
+        non_abstracted_identifiers = {"condition": [x[0] for x in tokens_a
+                                                    if x[1] == self.IDENTIFIER_TAG],
+                                      "consequent": [x[0] for x in tokens_b
+                                                     if x[1] == self.IDENTIFIER_TAG]}
         real_condition = tokens2Realcode(tokens_a)
         real_consequent = tokens2Realcode(tokens_b)
         if isIdentifiersReplace(real_condition, real_consequent, non_abstracted_identifiers):
@@ -446,13 +446,9 @@ def tokens2Realcode(tokens):
     return "".join([" "*x[2] + x[0] for x in tokens])
 
 
-def isIdentifiersReplace(condition, consequent, identifiers):
-    condition_set = set(identifiers["condition"])
-    consequent_set = set(identifiers["consequent"])
-    origin_condition = list(condition_set - consequent_set)
-    origin_consequent = list(consequent_set - condition_set)
-    return len(origin_condition) == len(origin_consequent) == 1 and\
-           condition.replace(origin_condition[0], origin_consequent[0]) == consequent
+def isIdentifiersReplace(condition: str, consequent: str, identifiers):
+    return len(identifiers["condition"]) == len(identifiers["consequent"]) == 1 and\
+           condition.replace(identifiers["condition"][0], identifiers["consequent"][0]) == consequent
 
 
 def opt_tag2symbol(opt_tag):
